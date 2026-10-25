@@ -2,8 +2,6 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23645383.svg)](https://doi.org/10.5281/zenodo.23645383)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
-![MONAI](https://img.shields.io/badge/built%20with-MONAI-green.svg)
 
 Code of the paper **"What Clean Dice Hides: Severity-Matched Stress Testing of 3D Brain Tumor Segmentation under
 Simulated MRI Artifacts"**. The paper link and its citation will be added here on publication.
