@@ -1,0 +1,152 @@
+# Single configuration file of the whole pipeline: paths, data split, models, training, artifacts, inference,
+# analysis and reader study. Nothing is hard-coded in the code.
+# Any value can be overridden from the command line:  simulated-mri-artifact-stress-test train --set training.epochs=2
+
+paths:
+  data_root: data/BrainTumour_MRI      # input: train/{images,labels}, test/{images,labels}
+  output_root: simulated-mri-artifact-stress-test_Output   # everything the pipeline writes (see README)
+  cache_dir: null                      # temporary preprocessed training cache; null = system temp directory
+
+experiment:
+  models: [dynunet, unetr, swinunetr]
+  seeds: [0, 1, 2]
+
+data:
+  flair_channel: 0
+  split:
+    seed: 0
+    val_cases: 48
+    probe_cases: 16
+    volume_quantiles: [25, 50, 75]
+    expected_sha256_prefix: 464ec7517d8a   # fingerprint of the published split; set to null to disable the check
+
+models:
+  dynunet:
+    label: DynUNet
+    batch_size: 4
+    kwargs:
+      spatial_dims: 3
+      in_channels: 1
+      out_channels: 1
+      kernel_size: [3, 3, 3, 3, 3, 3]
+      strides: [1, 2, 2, 2, 2, 2]
+      upsample_kernel_size: [2, 2, 2, 2, 2]
+      filters: [32, 64, 128, 256, 320, 320]
+      norm_name: instance
+      act_name: [leakyrelu, {negative_slope: 0.01}]
+      res_block: false
+      deep_supervision: false
+  unetr:
+    label: UNETR
+    batch_size: 4
+    kwargs:
+      in_channels: 1
+      out_channels: 1
+      feature_size: 16
+      hidden_size: 768
+      mlp_dim: 3072
+      num_heads: 12
+      proj_type: conv
+      norm_name: instance
+      res_block: true
+      dropout_rate: 0.0
+  swinunetr:
+    label: SwinUNETR
+    batch_size: 2
+    kwargs:
+      in_channels: 1
+      out_channels: 1
+      feature_size: 48
+      depths: [2, 2, 2, 2]
+      num_heads: [3, 6, 12, 24]
+      norm_name: instance
+      drop_rate: 0.0
+      attn_drop_rate: 0.0
+      dropout_path_rate: 0.0
+      use_v2: false
+      use_checkpoint: true
+
+training:
+  patch_size: [128, 128, 128]
+  iters_per_epoch: 84
+  epochs: 100
+  val_every_epochs: 5
+  lr: 1.0e-4
+  weight_decay: 1.0e-5
+  warmup_fraction: 0.05
+  grad_clip: 12.0
+  pos_neg: [2, 1]
+  amp: auto                     # auto | bf16 | fp16 | off
+  data_parallel: auto           # auto uses every visible GPU; false uses one
+  num_workers: auto
+  time_limit_hours: null        # stop cleanly after this many hours; rerun the same command to resume
+  safety_margin_s: 600
+  sw_batch_size: 4
+  augmentation:
+    affine_prob: 0.2
+    rotate_deg: 30
+    scale_range: [-0.3, 0.4]
+    flip_prob: 0.5
+    intensity_prob: 0.15
+    intensity_factor: 0.25
+
+artifacts:
+  names: [motion, noise, bias]
+  levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  primary_levels: [1, 2, 3, 4, 5]
+  target_ssim_step: 0.05              # target SSIM of level l is 1 - step * l
+  caps: {motion: 8.0, noise: 20.0, bias: 0.5}
+  grid_points: 20
+  ssim_sigma: 1.5
+  frozen_rel_tol: 1.0e-3
+  frozen_primary:
+    motion: {1: 0.624502, 2: 1.073773, 3: 1.544505, 4: 2.069383, 5: 2.739434}
+    noise: {1: 4.334937, 2: 6.420031, 3: 8.23896, 4: 9.986592, 5: 11.755475}
+    bias: {1: 0.065982, 2: 0.102879, 3: 0.135898, 4: 0.16974, 5: 0.205464}
+  motion: {events: 2, times: [0.52, 0.70], phase_encode_axis: 1}
+  bias: {polynomial_order: 3}
+  footprint: {level: 3, bands: [0.1, 0.4]}
+
+inference:
+  sw_batch_size: 4
+  sw_overlap: 0.5
+  threshold: 0.5
+  nsd_tolerance_mm: 1.0
+  sanity_tolerance: 0.002
+  strict_sanity: true
+  save_masks: true
+  save_degraded_volumes: false      # write every degraded FLAIR volume (large) to <output_root>/degraded
+  loader_workers: auto
+  metric_workers: auto
+  time_limit_hours: null
+  safety_margin_s: 600
+  debug_max_cases: null             # quick smoke test on a few cases, never used for results
+
+analysis:
+  exclude_clean_dsc: 0.1
+  seeds:
+    stats: 2026
+    h2_bootstrap: 11
+    pooled_retention: 5
+    envelope: 77
+    sensitivity: 404
+    post_masks: 2026
+  bootstrap:
+    h2: 10000
+    h1_rho: 4000
+    curves: 4000
+    pooled: 4000
+    envelope: 4000
+    envelope_passrate: 1000
+    volumetry_icc: 500
+    sensitivity: 4000
+    sensitivity_rho: 2000
+    post_masks: 2000
+  max_level: {motion: 9, noise: 9, bias: 10}   # level 10 equals level 9 for the capped artifacts
+  workers: auto
+
+reader_study:
+  n_cases: 10
+  seed: 2026
+  levels: [3, 6, 9]
+  blinded: true

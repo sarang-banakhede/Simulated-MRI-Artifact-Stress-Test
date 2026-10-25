@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "simulated-mri-artifact-stress-test"
+version = "1.0.0"
+description = "Severity-matched stress testing of 3D brain tumor segmentation under simulated MRI artifacts"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "pandas>=2.0",
+  "nibabel>=5.0",
+  "scikit-image>=0.22",
+  "matplotlib>=3.8",
+  "statsmodels>=0.14",
+  "pyyaml>=6.0",
+  "tqdm>=4.66",
+  "torch>=2.2",
+  "monai>=1.3",
+  "torchmetrics>=1.3",
+  "einops>=0.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+simulated-mri-artifact-stress-test = "simulated_mri_artifact_stress_test.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501", "E741", "B905", "UP037", "B023", "B007"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not slow'"
+markers = ["slow: end-to-end run on a synthetic dataset"]
